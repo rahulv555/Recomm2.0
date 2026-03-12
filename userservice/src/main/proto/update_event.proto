@@ -1,0 +1,13 @@
+// user edit events for kafka producer
+
+syntax = "proto3";
+
+package user.events; //generated code will go to patient.events package
+
+option java_multiple_files = true;
+
+//message = event for kafka
+message UpdateEvent{
+    string userId = 1;
+    string eventType = 2;
+}

@@ -1,0 +1,4 @@
+.venv/
+.vscode/
+apigateway/apigateway/src/main/resources/firebase-service-account.json
+dbvolumes/

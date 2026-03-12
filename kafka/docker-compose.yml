@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.8.7
+    container_name: reco_kafka_zookeeper
+    networks:
+      - reco-network
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.8.7
+    container_name: reco_kafka_broker
+    depends_on:
+      - zookeeper
+    networks:
+      - reco-network
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,OUTSIDE://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    restart: unless-stopped
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.8.7
+    container_name: reco_kafka_init
+    depends_on:
+      - kafka
+    networks:
+      - reco-network
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: |
+      "
+      # Wait until Kafka is up and responding
+      echo 'Waiting for Kafka to be ready...'
+      cub kafka-ready -b kafka:29092 1 30
+
+      echo 'Creating kafka topics...'
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user_created --replication-factor 1 --partitions 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user_updated --replication-factor 1 --partitions 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic rating --replication-factor 1 --partitions 1
+      
+      echo 'Successfully created topics:'
+      kafka-topics --bootstrap-server kafka:29092 --list
+      "
+
+
+networks:
+  reco-network:
+    external: true

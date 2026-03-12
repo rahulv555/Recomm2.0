@@ -1,0 +1,40 @@
+server:
+  port: 4005 #api gateway will run on this port
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              "[/**]":
+                allowedOrigins: "http://localhost:5173"
+                allowedMethods:
+                  ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
+                allowedHeaders: "*"
+                allowCredentials: true
+          routes:
+            - id: user-service
+              uri: http://recomm-userservice:8085
+              predicates:
+                - Path=/api/users/**
+              filters:
+                - TokenAuth
+                - StripPrefix=1 #to apply on predicate before forwarding to service uri( so here, will strip /api)
+
+            - id: restaurant-service
+              uri: http://recomm-restaurantservice:8086
+              predicates:
+                - Path=/api/restaurant/**
+              filters:
+                - TokenAuth
+                - StripPrefix=1 #to apply on predicate before forwarding to service uri( so here, will strip /api)
+
+            - id: recommendation-service
+              uri: http://recomm-recommservice:8087
+              predicates:
+                - Path=/api/recomm/**
+              filters:
+                - TokenAuth
+                - StripPrefix=1

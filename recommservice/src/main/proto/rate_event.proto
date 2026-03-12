@@ -1,0 +1,18 @@
+// user rate events for kafka producer
+
+syntax = "proto3";
+
+package user.events; //generated code will go to patient.events package
+
+option java_multiple_files = true;
+
+//message = event for kafka
+message RateEvent{
+    string userId = 1;
+    string placeId = 2;
+    int64 rating = 3;
+    int64 food_rating = 4;
+    int64 service_rating = 5;
+
+    string eventType = 6;
+}
