@@ -1,8 +1,10 @@
-# Subtitle Generator
+# Restaurant Recommendation System
 
 This is a Restaurant recommendation system, that generates recommendations for a user based on their and other's profile, preferences, location and interactions, using a neural network based Two-Tower Recommendation System. The entire system has been created with a microservices-based architecture, using springboot for all service except the ML-service, which uses python FastApi. For storage, PostgresDB is used and for cache/vector-search, Redis is used. For showcasing the system, I have created a basic React-based Web UI, that allows accessing all the endpoints to test the system.
 
 ## The Two Tower Recommendation Model
+The recommendation system uses a Two Tower Recommendation Model, which as the two towers - User Tower, Place Tower
+The user tower takes the user features as input
 
 
 ## The System architecture
@@ -12,6 +14,25 @@ This is a Restaurant recommendation system, that generates recommendations for a
 Startup Docker Desktop or equivalent to start the docker engine, before proceeding
 ### 0. Setup Firebase
 Setup Firebase Auth with email/password verification, and download the firebase-service-account.json to apigateway/apigateway/src/main/resources
+Add firebase-config.js to the recomm-frontend/src directory with following contents
+````js
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+
+// Replace these with your actual Firebase project configuration
+const firebaseConfig = {
+    apiKey: "...",
+    authDomain: "...",
+    projectId: "...",
+    storageBucket: "....",
+    messagingSenderId: "...",
+    appId: "..."
+};
+
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+````
 
 ### 1. Setup DB and tables
 Edit the value of VOLUME in db/setup_reco_postgres.sh to the directory you wish to store the data
