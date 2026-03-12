@@ -6,133 +6,133 @@ This is a Restaurant recommendation system, that generates recommendations for a
 The recommendation system uses a Two Tower Recommendation Model, which as the two towers - User Tower, Place Tower    
 <img width="494" height="212" alt="image" src="https://github.com/user-attachments/assets/9d19e7f4-429a-4efc-909b-f4f193f5d6c3" />
 
-Here, since this is a demo, I have used only few layers in the MLP, with less number of parameters due to VRAM limit.
+Here, since this is a demo, I have used only few layers in the MLP, with less number of parameters due to VRAM limit.    
 
-### User Tower
-The user tower takes the encoded user features as input.
-The user features are of 5 types :
-- Nominal - encoded using Label Encoder
-- Ordinal - Encoded by creating maps
-- Boolean - Manual encoding as 0 or 1
-- Numeric - They are normalized using StandardScaler
-- Bert Embeddings - All the features are concatened with their column name as string, passed to the MiniLM model to get Bert Embeddings
-Missing values are replaced by the modal values in the column
+### User Tower    
+The user tower takes the encoded user features as input.    
+The user features are of 5 types :    
+- Nominal - encoded using Label Encoder    
+- Ordinal - Encoded by creating maps    
+- Boolean - Manual encoding as 0 or 1    
+- Numeric - They are normalized using StandardScaler    
+- Bert Embeddings - All the features are concatened with their column name as string, passed to the MiniLM model to get Bert Embeddings    
+Missing values are replaced by the modal values in the column    
 
-### Place Tower
-The place tower takes the encoded place features as input.
-The place features are of 5 types :
-- Nominal - encoded using Label Encoder
-- Ordinal - Encoded by creating maps
-- Boolean - Manual encoding as 0 or 1
-- Numeric - They are normalized using StandardScaler
-- Bert Embeddings - All the features are concatened with their column name as string, passed to the MiniLM model to get Bert Embeddings
-Missing values are replaced by the modal values in the column
+### Place Tower    
+The place tower takes the encoded place features as input.    
+The place features are of 5 types :    
+- Nominal - encoded using Label Encoder    
+- Ordinal - Encoded by creating maps    
+- Boolean - Manual encoding as 0 or 1    
+- Numeric - They are normalized using StandardScaler    
+- Bert Embeddings - All the features are concatened with their column name as string, passed to the MiniLM model to get Bert Embeddings    
+Missing values are replaced by the modal values in the column    
 
-Both the towers have same architecture.
-nn.Linear(self.input_dim, hidden_dim) - Compresses the input vector to 128 dim (hidden dim) and learns cross-feature interactions by taking weighted sum of all features
-nn.ReLU() - turns off neurons with negative values. Non-linear activation function
-nn.Dropout(0.3) - To prevent overfitting by randomly killing 30% of the neurons. Forces the model to find multiple paths to the right answer, making it more robust and preventing it from memorizing the data.
-nn.Linear(hidden_dim, hidden_dim) - The final layer
-Followed by, F.normalize(self.mlp(feats), dim=1), which maps the vectors into a unit sphere, allowing comparison just using angles.
-This makes it ready for cosine similiarity calculation    
+Both the towers have same architecture.    
+- nn.Linear(self.input_dim, hidden_dim) - Compresses the input vector to 128 dim (hidden dim) and learns cross-feature interactions by taking weighted sum of all features    
+- nn.ReLU() - turns off neurons with negative values. Non-linear activation function    
+- nn.Dropout(0.3) - To prevent overfitting by randomly killing 30% of the neurons. Forces the model to find multiple paths to the right answer, making it more robust and preventing it from memorizing the data.    
+- nn.Linear(hidden_dim, hidden_dim) - The final layer    
+- Followed by, F.normalize(self.mlp(feats), dim=1), which maps the vectors into a unit sphere, allowing comparison just using angles.        
+This makes it ready for cosine similiarity calculation            
 
-Total parameters
-For User MLP with an input_dim of 1634 and a hidden_dim of 128:
-First Linear Layer: 1634x128 + 128 = 209,152 + 128 = 209,280
-Second Linear Layer: 128x128 + 128 = 16,384 + 128 = 16,512
-225,792 parameters
+Total parameters    
+For User MLP with an input_dim of 1634 and a hidden_dim of 128:    
+First Linear Layer: 1634x128 + 128 = 209,152 + 128 = 209,280    
+Second Linear Layer: 128x128 + 128 = 16,384 + 128 = 16,512    
+225,792 parameters    
 
-Place Tower MLP Parameters with an input_dim of 1599 and a hidden_dim of 128:
-First Linear Layer: 1599x128 + 128 = 204,672 + 128 = 204,800
-Second Linear Layer: 128x128 + 128 = 16,384 + 128 = 16,512
-221,312 parameters
+Place Tower MLP Parameters with an input_dim of 1599 and a hidden_dim of 128:    
+First Linear Layer: 1599x128 + 128 = 204,672 + 128 = 204,800    
+Second Linear Layer: 128x128 + 128 = 16,384 + 128 = 16,512    
+221,312 parameters    
 
-The cosine simliarity of the embeddings generated by these two towers is calculated
-Higher value implies higher probability of the user liking/interacting with the place/restaurant
+The cosine simliarity of the embeddings generated by these two towers is calculated    
+Higher value implies higher probability of the user liking/interacting with the place/restaurant    
 
-### Loss function
-The loss funcion used here is called infoNCE (Symmetric Cross-Entropy Loss implemented as In-batch Contrastive Loss), with the goal to make the user embedding as close as possible to the place embeddings of a place they rated high (Positive Pair), and different from the others (Negative pair).
-Since the embeddings are normalized, user_embeddings @ place_embeddings.T gives the cosine simliarity.
-The logits matrix (similiarity matrix) would look like this    
-<img width="697" height="230" alt="image" src="https://github.com/user-attachments/assets/e7977cae-5d1f-49e7-a8b2-0f26fe1f8c88" />
+### Loss function    
+The loss funcion used here is called infoNCE (Symmetric Cross-Entropy Loss implemented as In-batch Contrastive Loss), with the goal to make the user embedding as close as possible to the place embeddings of a place they rated high (Positive Pair), and different from the others (Negative pair).    
+Since the embeddings are normalized, user_embeddings @ place_embeddings.T gives the cosine simliarity.    
+The logits matrix (similiarity matrix) would look like this        
+<img width="697" height="230" alt="image" src="https://github.com/user-attachments/assets/e7977cae-5d1f-49e7-a8b2-0f26fe1f8c88" />    
 
-The higher values represent the places the user rated high. The diagonals represent the place best for the user.
-Also we only try to use interactions that were good (high rating) to pull the embeddings closer.
-Temperature ($\tau = 0.07$) is used to make the peaks of the distribution sharper, to help the model learn more effectively by punishing heavily for mistakes and making it confident about correct pairs
-The loss is calculated using Cross-Entropy Loss    
-<img width="650" height="254" alt="image" src="https://github.com/user-attachments/assets/ad2be905-3386-4225-a0d8-ea8d623ad452" />
+The higher values represent the places the user rated high. The diagonals represent the place best for the user.    
+Also we only try to use interactions that were good (high rating) to pull the embeddings closer.    
+Temperature ($\tau = 0.07$) is used to make the peaks of the distribution sharper, to help the model learn more effectively by punishing heavily for mistakes and making it confident about correct pairs    
+The loss is calculated using Cross-Entropy Loss        
+<img width="650" height="254" alt="image" src="https://github.com/user-attachments/assets/ad2be905-3386-4225-a0d8-ea8d623ad452" />    
 
-The average of user-to-place loss and place-to-user loss is taken (Dual directional loss), to take care of both perspectives.
-
-
-### Recommending/Ranking
-
-At inference time, just calculating and ordering based on the cosine simliarity between the user's vector and the place vectors would give the final recommendation ranking. This is done by storing the place vectors in Redis and doing a vector search using cosine similiarity.
+The average of user-to-place loss and place-to-user loss is taken (Dual directional loss), to take care of both perspectives.    
 
 
+### Recommending/Ranking    
 
-## The System architecture
-<img width="1231" height="591" alt="image" src="https://github.com/user-attachments/assets/5b98711d-d240-4ef3-af7f-337d9eeafe6e" />
+At inference time, just calculating and ordering based on the cosine simliarity between the user's vector and the place vectors would give the final recommendation ranking. This is done by storing the place vectors in Redis and doing a vector search using cosine similiarity.    
 
-### 1. Frontend 
-Here, I've created a Web UI using React (usage and ss at bottom). All of its requests are made the apigateway adress with suffix /api.
-Once the user logs in, the requests Authorization header is fitted with Bearer <auth token>
+
+
+## The System architecture    
+<img width="1231" height="591" alt="image" src="https://github.com/user-attachments/assets/5b98711d-d240-4ef3-af7f-337d9eeafe6e" />    
+
+### 1. Frontend     
+Here, I've created a Web UI using React (usage and ss at bottom). All of its requests are made the apigateway adress with suffix /api.    
+Once the user logs in, the requests Authorization header is fitted with Bearer <auth token>    
 
 ### 2. API Gateway
-A Springboot microservice. It acts as the only point of contact with the outside world.
-Filters all requests with the TokenAuth filter, adding the header key values pair "X-Authenticated-User-Id":userId to all authenticated requests.
-It can forward requests to the user service, restaurant service and recomm service
+A Springboot microservice. It acts as the only point of contact with the outside world.    
+Filters all requests with the TokenAuth filter, adding the header key values pair "X-Authenticated-User-Id":userId to all authenticated requests.    
+It can forward requests to the user service, restaurant service and recomm service    
 
-### 3. Reco DB
-A PostgresDB. Stores 3 tables : user_profiles, places, interactions.
-It can be accessed by all 3 main services, but as future improvement, can be modified to have different views for each service.
-Can be horizontally/verically scaled as well.
-Stores all the user data, place data, rating interactions, precomputed nn embeddings.
+### 3. Reco DB    
+A PostgresDB. Stores 3 tables : user_profiles, places, interactions.        
+It can be accessed by all 3 main services, but as future improvement, can be modified to have different views for each service.    
+Can be horizontally/verically scaled as well.    
+Stores all the user data, place data, rating interactions, precomputed nn embeddings.    
 
-### 4. User Service
-A Springboot microservice.
-Can create userprofile, check if a user exists, update a user's profile and store a user's restaurant rating/interaction in DB.
-It acts as a Kafka Producer, to the following topics : 'user-created', 'user-updated', 'rating'
-Whenever a user profile is created/updated, it publishes a message to the topics 'user-create'/'user-updated' respectively after the profile is saved in DB, with the corresponding user id
+### 4. User Service    
+A Springboot microservice.    
+Can create userprofile, check if a user exists, update a user's profile and store a user's restaurant rating/interaction in DB.    
+It acts as a Kafka Producer, to the following topics : 'user-created', 'user-updated', 'rating'    
+Whenever a user profile is created/updated, it publishes a message to the topics 'user-create'/'user-updated' respectively after the profile is saved in DB, with the corresponding user id    
 Whenever a place is rated by a user, it publishes a message to the topic 'rating' after the rating is stored, along with the userid and placeid of the interaction.
-Sets the interactions 'trained' attribute to false.
+Sets the interactions 'trained' attribute to false.    
 
-### 5. Recomm Service
-A Springboot microservice.
-From the apigateway, it can only be access using the /recommend endpoint, which is called when the user requests for recommendations. The recomm service then sends a request to the ml-service with the user id, which returns the list of recommended restaurants' ids
-It also acts as a Kafka Consumer, subscribed to the following topics : 'user-created', 'user-updated', 'rating'
-Whenever it receives 'user-create'/'user-updated', it sends a request to ml-service to regenerate the user's vector embeddings with the new profile.
-Whenever it receives 'rating', it sends a request to ml-service that the count of untrained interactions has increased
+### 5. Recomm Service    
+A Springboot microservice.    
+From the apigateway, it can only be access using the /recommend endpoint, which is called when the user requests for recommendations. The recomm service then sends a request to the ml-service with the user id, which returns the list of recommended restaurants' ids    
+It also acts as a Kafka Consumer, subscribed to the following topics : 'user-created', 'user-updated', 'rating'    
+Whenever it receives 'user-create'/'user-updated', it sends a request to ml-service to regenerate the user's vector embeddings with the new profile.    
+Whenever it receives 'rating', it sends a request to ml-service that the count of untrained interactions has increased    
 
-### 6. ML Service
-A Python-based FastAPI service
-It receives requests from recomm service only. It is connected to the DB as well as to Redis.
-It loads up the Two Tower model on initialisation, and populates redis with the vectors.
-When it receives a request to update user vector, it fetches the new user profile, encodes the vars and created BERT embeddings, and then passed it through the User Tower. The generated embedding is then stored in Redis.
-When it receives a request to return recommendations for a user, it runs a Redis Vector search on the places index (actually cosine similiarity), with a GEO filter using the user's location, and returns list of recommended restaurants' ids.
-When it receives notification the a new untrained interaction has been added, if the number crosses a threshold, it fetches all these interactions from DB, and retrains the Two Tower model using them. 
-Since it is run with 4 uvicorn workers, the model is reloaded on the workers only when the model weights are changed.
+### 6. ML Service    
+A Python-based FastAPI service    
+It receives requests from recomm service only. It is connected to the DB as well as to Redis.    
+It loads up the Two Tower model on initialisation, and populates redis with the vectors.    
+When it receives a request to update user vector, it fetches the new user profile, encodes the vars and created BERT embeddings, and then passed it through the User Tower. The generated embedding is then stored in Redis.    
+When it receives a request to return recommendations for a user, it runs a Redis Vector search on the places index (actually cosine similiarity), with a GEO filter using the user's location, and returns list of recommended restaurants' ids.    
+When it receives notification the a new untrained interaction has been added, if the number crosses a threshold, it fetches all these interactions from DB, and retrains the Two Tower model using them.     
+Since it is run with 4 uvicorn workers, the model is reloaded on the workers only when the model weights are changed.    
 
-### 7. Kafka
-Setup with the 3 topics - 'user-created', 'user-updated', 'rating'
-Acts as an asynchronous bridge between the user service and recomm service.
-Allows the model training, inference etc to happen in the background asynchronously, without the client/user-service having to wait.
+### 7. Kafka    
+Setup with the 3 topics - 'user-created', 'user-updated', 'rating'    
+Acts as an asynchronous bridge between the user service and recomm service.    
+Allows the model training, inference etc to happen in the background asynchronously, without the client/user-service having to wait.    
 
-### 8. Restaurant Service
-A Springboot microservice
-Can fetch restaurant(s) details and a user's ratings for restaurant's
+### 8. Restaurant Service    
+A Springboot microservice    
+Can fetch restaurant(s) details and a user's ratings for restaurant's    
 
-### 9. Firebase Auth
-For Authentication, I've used Firebase Auth with email and password here, instead of reinventing the wheel.
-The Firebase Auth token is used to validate requests.
+### 9. Firebase Auth    
+For Authentication, I've used Firebase Auth with email and password here, instead of reinventing the wheel.    
+The Firebase Auth token is used to validate requests.    
+    
 
 
-
-## How to setup
-Startup Docker Desktop or equivalent to start the docker engine, before proceeding
-### 0. Setup Firebase
-Setup Firebase Auth with email/password verification, and download the firebase-service-account.json to apigateway/apigateway/src/main/resources
-Add firebase-config.js to the recomm-frontend/src directory with following contents
+## How to setup    
+Startup Docker Desktop or equivalent to start the docker engine, before proceeding    
+### 0. Setup Firebase    
+Setup Firebase Auth with email/password verification, and download the firebase-service-account.json to apigateway/apigateway/src/main/resources    
+Add firebase-config.js to the recomm-frontend/src directory with following contents    
 ````js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
@@ -153,8 +153,8 @@ export const auth = getAuth(app);
 ````
 
 ### 1. Setup DB and tables
-Edit the value of VOLUME in db/setup_reco_postgres.sh to the directory you wish to store the data
-Once docker is up, inside db directory, run setup_reco_postgres.sh to setup the db and create the tables(inside init_reco.sql)
+Edit the value of VOLUME in db/setup_reco_postgres.sh to the directory you wish to store the data    
+Once docker is up, inside db directory, run setup_reco_postgres.sh to setup the db and create the tables(inside init_reco.sql)    
 ````bash
 cd db
 ./setup_reco_postgres.sh
@@ -167,48 +167,48 @@ python -m venv .venv
 source .venv/Scripts/activate
 pip install -r ml-model/requirements.txt
 ````
-To setup the data, once the env is activated
+To setup the data, once the env is activated    
 ````bash
 cd ml-service
 python datasetup.py
 ````
-This will load the data from the dataset directory, clean it up, do feature engineering, encoding, scaling and then store the entire data in the DB.
-All the encoders and scalers created are stored as .joblib files in the app/artifact directory.
-BERT embeddings(using all-MiniLM-L6-v2 stored in models) are also created, to be passed parallely with the other encoded features
+This will load the data from the dataset directory, clean it up, do feature engineering, encoding, scaling and then store the entire data in the DB.    
+All the encoders and scalers created are stored as .joblib files in the app/artifact directory.    
+BERT embeddings(using all-MiniLM-L6-v2 stored in models) are also created, to be passed parallely with the other encoded features    
 
-Once the data is loaded, next step is to train the model. The Two Tower model definition is stored in app/model/model.py
-For this step, run the cells in **training.ipynb**. This will train the model, with schedulers and optimizers, and retrain with the validation data to create a separate model, and store both models (.pt) for future use under models/twotower.
-The place/restaurant embeddings are also generated with the PlaceTower and stored in DB (as they don't have to be recalculated again)
+Once the data is loaded, next step is to train the model. The Two Tower model definition is stored in app/model/model.py    
+For this step, run the cells in **training.ipynb**. This will train the model, with schedulers and optimizers, and retrain with the validation data to create a separate model, and store both models (.pt) for future use under models/twotower.    
+The place/restaurant embeddings are also generated with the PlaceTower and stored in DB (as they don't have to be recalculated again)    
 
-3. Startup Kafka
+3. Startup Kafka    
 ````bash
 ./setup-kafka.sh
 ````
-Creates network reco-network. Starts kafka on port 9092
+Creates network reco-network. Starts kafka on port 9092    
 
-5. Setup remaining services
-Run setup-all.sh to setup the remaining services. If this fails, run individual setup.sh inside each service directory
+5. Setup remaining services    
+Run setup-all.sh to setup the remaining services. If this fails, run individual setup.sh inside each service directory    
 ````bash
 ./setup-all.sh
 ````
-The services startup inside reco-network with the following ports
-**APIGATEWAY - 4005
-ML-SERVICE - 8088
-DB - 5432
-REDIS - 6372
-RECOMM-SERVICE - 8087
-RESTAURANT-SERVICE - 8086
-USER-SERVICE - 8085**
+The services startup inside reco-network with the following ports    
+**APIGATEWAY - 4005    
+ML-SERVICE - 8088    
+DB - 5432    
+REDIS - 6372    
+RECOMM-SERVICE - 8087    
+RESTAURANT-SERVICE - 8086    
+USER-SERVICE - 8085**    
 
 
-## ENDPOINTS -
-All requests to http://localhost:4005/api/ (apigateway) need the Bearer <valid firebase auth token> Authorization header, will be filtered using a TokenAuthFilter in the apigateway, which verifies the Bearer <Token> authorization header with firebase, and if valid, adds the X-Authenticated-User-Id header to requests before forwarding them
+## ENDPOINTS -    
+All requests to http://localhost:4005/api/ (apigateway) need the Bearer <valid firebase auth token> Authorization header, will be filtered using a TokenAuthFilter in the apigateway, which verifies the Bearer <Token> authorization header with firebase, and if valid, adds the X-Authenticated-User-Id header to requests before forwarding them    
 
-#### Refer endpoints.txt to see endpoints exposed from apigateway
+#### Refer endpoints.txt to see endpoints exposed from apigateway    
 
 
-## FRONTEND / WEB UI
-Run the following
+## FRONTEND / WEB UI    
+Run the following    
 ````bash
 npm create vite@5 restaurant-frontend -- --template react
 npm install
@@ -216,47 +216,47 @@ npm install firebase leaflet react-leaflet@^4.2.1
 npm run dev
 ````
 
-#### 1. Login / Signup Page
+#### 1. Login / Signup Page    
 <img width="1638" height="941" alt="login" src="https://github.com/user-attachments/assets/5465f09c-17f7-4754-9b2a-c9a85ba70338" />
 
-#### 2. Create profile
+#### 2. Create profile    
 <img width="1858" height="903" alt="NewProfile" src="https://github.com/user-attachments/assets/668140ee-efe4-41d2-bbc4-c4ade1dd1ff1" />
 
 
-Appears when signing in for the first time. User must fill all details and save, before being able to get recommendations
+Appears when signing in for the first time. User must fill all details and save, before being able to get recommendations    
 
-#### 3. Filled and Save profile
+#### 3. Filled and Save profile    
 <img width="1852" height="924" alt="FilledProfile2" src="https://github.com/user-attachments/assets/4e1008de-0cf9-4c9b-960e-0074612337d6" />
 
 
-A filled profile, that can be saved. This stores the profile to DB, and triggers the user embedding creation, which gets stored in Redis as well.
-This can be edited and saved, which reinvokes the creation of the updated user embedding.
+A filled profile, that can be saved. This stores the profile to DB, and triggers the user embedding creation, which gets stored in Redis as well.    
+This can be edited and saved, which reinvokes the creation of the updated user embedding.    
 
-#### 4. Select location for recommendation
+#### 4. Select location for recommendation    
 <img width="1858" height="953" alt="MapBeforeRecomm" src="https://github.com/user-attachments/assets/2cd4fb23-cd26-4216-bc0b-b15cd09cc892" />
 
 
-User can click to place red marker, select location and click on the button for recommendation. This invokes a Vector search using cosine similiarity with the place/restaurant embeddings stored in Redis, with the user embedding(which is the same as the inference step of the Two Tower model), along with a GeoFilter applied.
+User can click to place red marker, select location and click on the button for recommendation. This invokes a Vector search using cosine similiarity with the place/restaurant embeddings stored in Redis, with the user embedding(which is the same as the inference step of the Two Tower model), along with a GeoFilter applied.    
 
-The user's past ratings are also shown
+The user's past ratings are also shown    
 
 
-#### 5. Recommendation result
+#### 5. Recommendation result    
 <img width="1854" height="939" alt="Recomm" src="https://github.com/user-attachments/assets/d915415e-ba4b-4e37-8294-38a3ba98e35a" />
 
-The recommended places are shown on the map with blue marker. Clicking on them shows their details in the sidebar
+The recommended places are shown on the map with blue marker. Clicking on them shows their details in the sidebar    
 
 
 
-
-#### 6. Rating a place
+    
+#### 6. Rating a place    
 <img width="1857" height="927" alt="Rating" src="https://github.com/user-attachments/assets/327fa157-ca91-4473-bd9e-7deb4202fdeb" />
 
-If the place has been rated previously by the user, that rating is shown as the preset value
-Adjust the slider to place the rating (Can be replaced with a star system, currently the slider moves in 0.5 steps)
-Click on save rating. This adds this interaction to the DB, and once the number of untrained interactions crosses a threshold, the model is retrained with these new interactions.
+If the place has been rated previously by the user, that rating is shown as the preset value    
+Adjust the slider to place the rating (Can be replaced with a star system, currently the slider moves in 0.5 steps)    
+Click on save rating. This adds this interaction to the DB, and once the number of untrained interactions crosses a threshold, the model is retrained with these new interactions.    
 
-#### 7. After rating
+#### 7. After rating    
 <img width="1852" height="941" alt="Rated" src="https://github.com/user-attachments/assets/9eb8833a-fa42-42fe-bbcb-9a21c6c68f50" />
 
 The interaction is added to the user's history
