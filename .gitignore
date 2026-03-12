@@ -2,3 +2,4 @@
 .vscode/
 apigateway/apigateway/src/main/resources/firebase-service-account.json
 dbvolumes/
+.*src/firebase-config.js
