@@ -25,7 +25,7 @@ const FORM_CONFIG = [
   { name: 'height', type: 'number', label: 'Height (m)', step: '0.01' },
   { name: 'weight', type: 'number', label: 'Weight (kg)' },
   { name: 'birth_year', type: 'number', label: 'Birth Year' },
-  { name: 'age', type: 'number', label: 'Age' },
+  // { name: 'age', type: 'number', label: 'Age' },
   
 ];
 
@@ -39,6 +39,8 @@ export default function App() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [ratingForm, setRatingForm] = useState({ rating: 0, foodRating: 0, serviceRating: 0 });
 const [isRatingSaving, setIsRatingSaving] = useState(false);
+const [uiMessage, setUiMessage] = useState(null);
+
 
   const [recommendations, setRecommendations] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
@@ -71,7 +73,11 @@ const [isRatingSaving, setIsRatingSaving] = useState(false);
       if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
       else await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      alert("Auth Error: " + err.message);
+      // alert("Auth Error: " + err.message);
+      setUiMessage({
+  type: "error",
+  text: "Auth Error: " + err.message
+});
     }
   };
   useEffect(() => {
@@ -102,10 +108,18 @@ const handleSaveRating = async () => {
     };
     console.log(payload);
     await apiCall('/users/rate', 'POST', payload);
-    alert("Rating saved!");
+    // alert("Rating saved!");
+    setUiMessage({
+    type: "success",
+    text: "Rating saved!"
+  });
     await fetchUserRatings(); // Refresh the history list
   } catch (err) {
-    alert("Error saving rating: " + err.message);
+    // alert("Error saving rating: " + err.message);
+    setUiMessage({
+    type: "error",
+    text: "Error saving rating: " + err.message
+  });
   }
   setIsRatingSaving(false);
 };
@@ -114,6 +128,7 @@ const handleSaveRating = async () => {
       const { userExists } = await apiCall('/users/exists');
       if (userExists) {
         const userData = await apiCall('/users');
+        userData.age = 2026 - userData.birth_year
         setProfile(userData);
         fetchUserRatings();
       } else {
@@ -194,7 +209,8 @@ const handleSaveRating = async () => {
     "name", "smoker", "drink_level", "budget", "dress_preference", 
     "ambience", "transport", "marital_status", "hijos", "personality", 
     "religion", "interest", "activity", "color", "cuisine", 
-    "height", "weight", "birth_year", "age"
+    "height", "weight", "birth_year"
+    //  "age"
   ];
 
   const missingFields = requiredFields.filter(field => {
@@ -213,17 +229,30 @@ const handleSaveRating = async () => {
   if (missingFields.length > 0) {
     // Format field names for a nicer alert message
     const fieldList = missingFields.map(f => f.replace('_', ' ')).join(", ");
-    alert(`Please fill out all fields. Missing: ${fieldList}`);
+    // alert(`Please fill out all fields. Missing: ${fieldList}`);
+    setUiMessage({
+    type: "error",
+    text: `Please fill out all fields. Missing: ${fieldList}`
+  });
     return; // Stop execution
   }
 
     setSavingProfile(true);
     try {
       const { userExists } = await apiCall('/users/exists');
+      profile['age'] = 2026 - profile["birth_year"];
       await apiCall(userExists ? '/users/update' : '/users/create', userExists ? 'PATCH' : 'POST', profile);
-      alert("Profile saved successfully!");
+      // alert("Profile saved successfully!");
+      setUiMessage({
+    type: "success",
+    text: "Profile saved successfully!"
+  });
     } catch (err) {
-      alert("Error saving profile: " + err.message);
+      // alert("Error saving profile: " + err.message);
+      setUiMessage({
+    type: "error",
+    text: "Error saving profile: " + err.message
+  });
     }
     setSavingProfile(false);
   };
@@ -243,13 +272,25 @@ const handleSaveRating = async () => {
         
         if (!placeIds || placeIds.length === 0) {
           setLoadingRecomms(false);
-          return alert("No recommendations found.");
+          // return alert("No recommendations found.");
+          setUiMessage({
+    type: "error",
+    text: "No recommendations found."
+  });
         }
         const restaurants = await apiCall('/restaurant/list', 'POST', { placeIDs: placeIds });
         console.log(restaurants);
         setRecommendations(restaurants);
+        setUiMessage({
+  type: "success",
+  text: "Got Recommendations!"
+});
       } catch (err) {
-        alert("Error: " + err.message);
+        // alert("Error: " + err.message);
+        setUiMessage({
+    type: "error",
+    text: "Error: " + err.message
+  });
       }
       setLoadingRecomms(false);
     };
@@ -261,7 +302,23 @@ const handleSaveRating = async () => {
 
   if (!authUser) {
     return (
-      <div style={{ maxWidth: '400px', margin: '50px auto' }}>
+      
+      
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center',  
+      alignItems: 'center',      
+      height: '100vh',           
+      width: '100vw'            
+    }}>
+      
+      <div style={{ 
+        width: '320px',          
+        padding: '20px',
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.05)' 
+      }}>
         <h2>Login to Recommender</h2>
         <form style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} />
@@ -270,12 +327,22 @@ const handleSaveRating = async () => {
           <button onClick={(e) => handleAuth(e, true)}>Create Account</button>
         </form>
       </div>
+      </div>
     );
   }
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      <header style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <div className="app-container">
+      <header
+  style={{
+    width: "100%",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "30px",
+    
+  }}
+>
         <h1>Restaurant Recommender</h1>
         <button onClick={() => signOut(auth)}>Log Out</button>
       </header>
@@ -304,7 +371,7 @@ const handleSaveRating = async () => {
                     display: 'flex', 
                     flexWrap: 'wrap', 
                     gap: '10 px', 
-                    justifyContent: 'center', // This centers the tags
+                    justifyContent: 'center', 
                     padding: '10px',
                     border: '1px solid #eee',
                     borderRadius: '8px'
@@ -314,7 +381,7 @@ const handleSaveRating = async () => {
                       return (
                         <button
                           key={opt}
-                          type="button" // Important: prevents form submission
+                          type="button"
                           onClick={() => handleCuisineToggle(opt)}
                           style={{
                             padding: '8px 16px',
@@ -344,41 +411,19 @@ const handleSaveRating = async () => {
               <button type="submit" disabled={savingProfile}>
                 {savingProfile ? "Saving..." : "Save Profile"}
               </button>
+
+            <div style={{paddingTop:'40px'}}></div>
+              {uiMessage && (
+  <div className={`ui-message ${uiMessage.type}`}>
+    {uiMessage.text}
+  </div>
+)}
             </div>
           </form>
         </section>
       )}
 
-      <section style={{ marginBottom: '40px', width: '100%' }}>
-  <h2>Your Past Ratings</h2>
-  {loadingRatings ? (
-    <p>Loading your history...</p>
-  ) : userRatings.length > 0 ? (
-    <div style={{ 
-      display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-      gap: '15px' 
-    }}>
-      {userRatings.map((rate, idx) => (
-        <div key={rate.placeID || idx} style={{ 
-          padding: '15px', 
-          border: '1px solid #eee', 
-          borderRadius: '10px',
-          backgroundColor: '#fafafa'
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#2563eb'}}>{rate.name}</h4>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'black'}}>
-            <span><strong>Overall:</strong> {rate.rating}</span>
-            <span><strong>Food:</strong> {rate.foodrating}</span>
-            <span><strong>Service:</strong> {rate.serviceRating}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p style={{ fontStyle: 'italic', color: '#888' }}>You haven't rated any restaurants yet.</p>
-  )}
-</section>
+      
 
 <hr style={{ width: '100%', margin: '20px 0' }} />
 
@@ -389,48 +434,80 @@ const handleSaveRating = async () => {
   {isProfileComplete ? (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* 1. Increased height to account for the <p> tag, or use min-height */}
-      <div style={{ display: 'flex', gap: '20px', minHeight: '550px' }}> 
+      
+      <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "2fr 1fr",
+    gap: "20px",
+    height: "550px",
+    width: "100%"
+  }}
+>
         
-        {/* 2. Map Column: Use flexbox here too to stack P and Map correctly */}
-        <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
-          <p style={{ margin: '0 0 10px 0' }}>
-             Click on the map to set your search location.
-          </p>
-          
-          {/* 3. Wrap Map in a div that takes the REMAINING space */}
-          <div style={{ flex: 1, position: 'relative', border: '1px solid #ccc', borderRadius: '8px', overflow: 'hidden' }}>
-            <MapComponent 
-              places={recommendations} 
-              onMarkerClick={setSelectedRestaurant}
-              onMapClick={(coords) => setUserLocation(coords)} 
-              selectedLocation={userLocation}
-              center={{ lat: 23.6345, lng: -102.5528 }} 
-            />
-          </div>
-        </div>
+       
+        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+  <p style={{ marginBottom: "10px", fontSize: "0.9rem", color: "#968a8a" }}>
+    Click on the map to set your search location.
+  </p>
+
+  <div
+    style={{
+      flex: 1,
+      borderRadius: "12px",
+      overflow: "hidden",
+      border: "1px solid #ddd",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.05)"
+    }}
+  >
+    <MapComponent
+      places={recommendations}
+      onMarkerClick={setSelectedRestaurant}
+      onMapClick={(coords) => setUserLocation(coords)}
+      selectedLocation={userLocation}
+      center={{ lat: 23.6345, lng: -102.5528 }}
+    />
+  </div>
+</div>
 
         {/* Sidebar */}
-        <div style={{ flex: 1, padding: '15px', border: '1px solid #ddd', borderRadius: '8px', overflowY: 'auto', height: '100%' }}>
+        <div style={{ minWidth: '500px', flex: 1, padding: '15px', border: '1px solid #ddd', borderRadius: '8px', overflowY: 'auto', height: '100%' }}>
   {selectedRestaurant ? (
     <>
       <div style={{ borderBottom: '2px solid #eee', marginBottom: '15px', paddingBottom: '10px' }}>
-        <h3>{selectedRestaurant.name}</h3>
+       <h3 style={{ margin: 0, color: "#2563eb", fontSize: "1.3rem" }}>
+  {selectedRestaurant.name}
+</h3>
         <p style={{fontSize: '0.85rem', color: '#666'}}>{selectedRestaurant.address}</p>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
-        <p><strong>Place id:</strong> {selectedRestaurant.placeID}</p>
-        <p><strong>Cuisine:</strong> {selectedRestaurant.rcuisine?.join(', ')}</p>
-        <p><strong>Alcohol:</strong> {selectedRestaurant.alcohol?.replace(/_/g,' ')}</p>
-        <p><strong>Dress code:</strong> {selectedRestaurant.dress_code}</p>
-         <p><strong>Smoking Area:</strong> {selectedRestaurant.smoking_area}</p>
+      <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "10px",
+    fontSize: "0.9rem"
+  }}
+>
+  {/* <p><strong>ID:</strong> {selectedRestaurant.placeID}</p> */}
+  <p><strong>Cuisine:</strong> {selectedRestaurant.rcuisine?.join(", ")}</p>
+  <br/>
+  <p><strong>Alcohol:</strong> {selectedRestaurant.alcohol?.replace(/_/g, " ")}</p>
+  <p><strong>Dress:</strong> {selectedRestaurant.dress_code}</p>
+  <p><strong>Smoking:</strong> {selectedRestaurant.smoking_area}</p>
+  <p><strong>Parking:</strong> {selectedRestaurant.parking_lot}</p>
+</div>
 
-              <p><strong>Parking:</strong> {selectedRestaurant.parking_lot}</p>
-      </div>
-
-      <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-        <h4 style={{ marginTop: 0 }}>{userRatings.some(r => r.placeID === selectedRestaurant.placeID) ? "Your Rating" : "Rate this Place"}</h4>
+      <div
+  style={{
+    marginTop: "20px",
+    padding: "15px",
+    background: "#f8fafc",
+    borderRadius: "10px",
+    border: "1px solid #eee"
+  }}
+>       <div>
+        <h4 style={{ marginTop: 0, color: 'black'}}>{userRatings.some(r => r.placeID === selectedRestaurant.placeID) ? "Your Rating" : "Rate this Place"}</h4>
         
         {['rating', 'foodRating', 'serviceRating'].map((field) => (
           <div key={field} style={{ marginBottom: '10px' }}>
@@ -462,35 +539,71 @@ const handleSaveRating = async () => {
         >
           {isRatingSaving ? "Saving..." : "Save Rating"}
         </button>
-      </div>
+      </div></div>
     </>
   ) : (
     <p>{recommendations.length > 0 ? "Click a marker to see details." : "Select a location on the map to begin."}</p>
   )}
-</div>
-      </div>
 
+      </div>
+      
       <button 
+        type="button"
         onClick={() => getRecommendations(userLocation)} 
         disabled={loadingRecomms}
-        style={{ 
-          padding: '15px 20px', 
-          fontSize: '1.1rem', 
-          backgroundColor: '#4CAF50', 
-          color: 'white',
-          cursor: loadingRecomms ? 'not-allowed' : 'pointer',
-          borderRadius: '5px',
-          border: 'none',
-          zIndex: 10 // Ensures button stays on top if anything drifts
-        }}
+        style={{
+  padding: "14px 24px",
+  fontSize: "1rem",
+  background: "linear-gradient(135deg,#4CAF50,#43a047)",
+  color: "white",
+  borderRadius: "8px",
+  border: "none",
+  cursor: loadingRecomms ? "not-allowed" : "pointer",
+  fontWeight: "bold",
+  boxShadow: "0 3px 10px rgba(0,0,0,0.15)"
+}}
       >
         {loadingRecomms ? "Analyzing..." : `Get Recommendations near this spot`}
       </button>
+      </div>
     </div>
   ) : (
     <p style={{ color: 'red', fontSize: '0.9rem' }}>Fill out and save all profile fields to unlock the map and recommendations.</p>
   )}
 </section>
+
+
+<section style={{ marginBottom: '40px', width: '100%' }}>
+  <h2>Your Past Ratings</h2>
+  {loadingRatings ? (
+    <p>Loading your history...</p>
+  ) : userRatings.length > 0 ? (
+    <div style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+      gap: '15px' 
+    }}>
+      {userRatings.map((rate, idx) => (
+        <div key={rate.placeID || idx} style={{ 
+          padding: '15px', 
+          border: '1px solid #eee', 
+          borderRadius: '10px',
+          backgroundColor: '#fafafa'
+        }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#2563eb'}}>{rate.name}</h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'black'}}>
+            <span><strong>Overall:</strong> {rate.rating}</span>
+            <span><strong>Food:</strong> {rate.foodRating}</span>
+            <span><strong>Service:</strong> {rate.serviceRating}</span>
+          </div>
+        </div>
+      ))}
     </div>
+  ) : (
+    <p style={{ fontStyle: 'italic', color: '#888' }}>You haven't rated any restaurants yet.</p>
+  )}
+</section>
+    </div>
+    // </div>
   );
 }
