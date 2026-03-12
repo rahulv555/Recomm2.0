@@ -1,0 +1,227 @@
+// BASE PATH - /api
+
+
+//USERS API
+
+// Get user profile
+// GET /api/users
+// Response
+{
+  "name": "string",
+  "smoker": "string",
+  "drink_level": "string",
+  "budget": "string",
+  "dress_preference": "string",
+  "ambience": "string",
+  "transport": "string",
+  "marital_status": "string",
+  "hijos": "string",
+  "personality": "string",
+  "religion": "string",
+  "interest": "string",
+  "activity": "string",
+  "color": "string",
+
+  "cuisine": ["string"],
+
+  "height": "double",
+  "weight": "double",
+
+  "birth_year": "integer",
+  "age": "integer"
+}
+
+//Check user exists
+//GET /api/users/exists
+//Response
+{
+  "userExists": true
+}
+
+
+
+//Create User
+//POST /api/users/create
+//Request & Response
+{
+  "name": "string",
+  "smoker": "string",
+  "drink_level": "string",
+  "budget": "string",
+  "dress_preference": "string",
+  "ambience": "string",
+  "transport": "string",
+  "marital_status": "string",
+  "hijos": "string",
+  "personality": "string",
+  "religion": "string",
+  "interest": "string",
+  "activity": "string",
+  "color": "string",
+
+  "cuisine": ["string"],
+
+  "height": 0.0,
+  "weight": 0.0,
+
+  "birth_year": 0,
+  "age": 0
+}
+
+
+
+//Update User
+//PATCH /api/users/update
+//Request
+{
+  "smoker": "string",
+  "drink_level": "string",
+  "budget": "string",
+  "dress_preference": "string",
+  "ambience": "string",
+  "transport": "string",
+  "marital_status": "string",
+  "hijos": "string",
+  "personality": "string",
+  "religion": "string",
+  "interest": "string",
+  "activity": "string",
+  "color": "string",
+
+  "cuisine": ["string"],
+
+  "height": 0.0,
+  "weight": 0.0
+}
+
+
+
+//Rate a restaurant
+//POST /api/users/rate
+//Request
+{
+  "placeID": "string",
+  "rating": 0.0,
+  "foodRating": 0.0,
+  "serviceRating": 0.0
+}
+
+//Response
+{
+  "placeID": "string",
+  "rating": 0.0,
+  "foodRating": 0.0,
+  "serviceRating": 0.0
+}
+
+
+
+//RESTAURANTS API
+
+//Get User ratings
+//GET /api/restaurant/rates
+//Response
+[
+  {
+    "name": "string",
+    "placeID": "string",
+    "rating": 0.0,
+    "foodRating": 0.0,
+    "serviceRating": 0.0
+  }
+]
+
+
+
+//Get Restaurant details
+//POST /api/restaurant
+//Request
+{
+  "placeID": "string"
+}
+
+//Response
+{
+  "latitude": 0.0,
+  "longitude": 0.0,
+
+  "name": "string",
+  "address": "string",
+  "state": "string",
+  "country": "string",
+
+  "alcohol": "string",
+  "smoking_area": "string",
+  "dress_code": "string",
+  "accessibility": "string",
+  "price": "string",
+  "rambience": "string",
+  "franchise": "string",
+  "area": "string",
+  "parking_lot": "string",
+
+  "Rcuisine": ["string"]
+}
+
+
+
+
+//Get Multiple Restaurants
+//POST /api/restaurant/list
+//Request
+{
+  "placeIDs": ["string"]
+}
+//Response
+[
+  {
+    "latitude": 0.0,
+    "longitude": 0.0,
+
+    "name": "string",
+    "address": "string",
+    "state": "string",
+    "country": "string",
+
+    "alcohol": "string",
+    "smoking_area": "string",
+    "dress_code": "string",
+    "accessibility": "string",
+    "price": "string",
+    "rambience": "string",
+    "franchise": "string",
+    "area": "string",
+    "parking_lot": "string",
+
+    "Rcuisine": ["string"]
+  }
+]
+
+
+
+
+//RECOMM API
+
+//Get recommendations for a user
+//POST /api/recomm
+//Request
+{
+  "latitude": 0.0,
+  "longitude": 0.0
+}
+
+//Response
+{
+  "recommendations": [
+    "placeID1",
+    "placeID2",
+    "placeID3"
+  ]
+}
+
+
+
+
+
+
+
