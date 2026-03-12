@@ -3,8 +3,8 @@
 This is a Restaurant recommendation system, that generates recommendations for a user based on their and other's profile, preferences, location and interactions, using a neural network based Two-Tower Recommendation System. The entire system has been created with a microservices-based architecture, using springboot for all service except the ML-service, which uses python FastApi. For storage, PostgresDB is used and for cache/vector-search, Redis is used. For showcasing the system, I have created a basic React-based Web UI, that allows accessing all the endpoints to test the system.
 
 ## The Two Tower Recommendation Model
-The recommendation system uses a Two Tower Recommendation Model, which as the two towers - User Tower, Place Tower
-<img width="988" height="423" alt="image" src="https://github.com/user-attachments/assets/9d19e7f4-429a-4efc-909b-f4f193f5d6c3" />
+The recommendation system uses a Two Tower Recommendation Model, which as the two towers - User Tower, Place Tower    
+<img width="494" height="212" alt="image" src="https://github.com/user-attachments/assets/9d19e7f4-429a-4efc-909b-f4f193f5d6c3" />
 
 Here, since this is a demo, I have used only few layers in the MLP, with less number of parameters due to VRAM limit.
 
@@ -53,13 +53,15 @@ Higher value implies higher probability of the user liking/interacting with the 
 ### Loss function
 The loss funcion used here is called infoNCE (Symmetric Cross-Entropy Loss implemented as In-batch Contrastive Loss), with the goal to make the user embedding as close as possible to the place embeddings of a place they rated high (Positive Pair), and different from the others (Negative pair).
 Since the embeddings are normalized, user_embeddings @ place_embeddings.T gives the cosine simliarity.
-The logits matrix (similiarity matrix) would look like this
+The logits matrix (similiarity matrix) would look like this    
 <img width="697" height="230" alt="image" src="https://github.com/user-attachments/assets/e7977cae-5d1f-49e7-a8b2-0f26fe1f8c88" />
 
 The higher values represent the places the user rated high. The diagonals represent the place best for the user.
 Also we only try to use interactions that were good (high rating) to pull the embeddings closer.
 Temperature ($\tau = 0.07$) is used to make the peaks of the distribution sharper, to help the model learn more effectively by punishing heavily for mistakes and making it confident about correct pairs
-The loss is calculated using Cross-Entropy Loss
+The loss is calculated using Cross-Entropy Loss    
+<img width="650" height="254" alt="image" src="https://github.com/user-attachments/assets/ad2be905-3386-4225-a0d8-ea8d623ad452" />
+
 The average of user-to-place loss and place-to-user loss is taken (Dual directional loss), to take care of both perspectives.
 
 
@@ -70,6 +72,60 @@ At inference time, just calculating and ordering based on the cosine simliarity 
 
 
 ## The System architecture
+<img width="1231" height="591" alt="image" src="https://github.com/user-attachments/assets/5b98711d-d240-4ef3-af7f-337d9eeafe6e" />
+
+### 1. Frontend 
+Here, I've created a Web UI using React (usage and ss at bottom). All of its requests are made the apigateway adress with suffix /api.
+Once the user logs in, the requests Authorization header is fitted with Bearer <auth token>
+
+### 2. API Gateway
+A Springboot microservice. It acts as the only point of contact with the outside world.
+Filters all requests with the TokenAuth filter, adding the header key values pair "X-Authenticated-User-Id":userId to all authenticated requests.
+It can forward requests to the user service, restaurant service and recomm service
+
+### 3. Reco DB
+A PostgresDB. Stores 3 tables : user_profiles, places, interactions.
+It can be accessed by all 3 main services, but as future improvement, can be modified to have different views for each service.
+Can be horizontally/verically scaled as well.
+Stores all the user data, place data, rating interactions, precomputed nn embeddings.
+
+### 4. User Service
+A Springboot microservice.
+Can create userprofile, check if a user exists, update a user's profile and store a user's restaurant rating/interaction in DB.
+It acts as a Kafka Producer, to the following topics : 'user-created', 'user-updated', 'rating'
+Whenever a user profile is created/updated, it publishes a message to the topics 'user-create'/'user-updated' respectively after the profile is saved in DB, with the corresponding user id
+Whenever a place is rated by a user, it publishes a message to the topic 'rating' after the rating is stored, along with the userid and placeid of the interaction.
+Sets the interactions 'trained' attribute to false.
+
+### 5. Recomm Service
+A Springboot microservice.
+From the apigateway, it can only be access using the /recommend endpoint, which is called when the user requests for recommendations. The recomm service then sends a request to the ml-service with the user id, which returns the list of recommended restaurants' ids
+It also acts as a Kafka Consumer, subscribed to the following topics : 'user-created', 'user-updated', 'rating'
+Whenever it receives 'user-create'/'user-updated', it sends a request to ml-service to regenerate the user's vector embeddings with the new profile.
+Whenever it receives 'rating', it sends a request to ml-service that the count of untrained interactions has increased
+
+### 6. ML Service
+A Python-based FastAPI service
+It receives requests from recomm service only. It is connected to the DB as well as to Redis.
+It loads up the Two Tower model on initialisation, and populates redis with the vectors.
+When it receives a request to update user vector, it fetches the new user profile, encodes the vars and created BERT embeddings, and then passed it through the User Tower. The generated embedding is then stored in Redis.
+When it receives a request to return recommendations for a user, it runs a Redis Vector search on the places index (actually cosine similiarity), with a GEO filter using the user's location, and returns list of recommended restaurants' ids.
+When it receives notification the a new untrained interaction has been added, if the number crosses a threshold, it fetches all these interactions from DB, and retrains the Two Tower model using them. 
+Since it is run with 4 uvicorn workers, the model is reloaded on the workers only when the model weights are changed.
+
+### 7. Kafka
+Setup with the 3 topics - 'user-created', 'user-updated', 'rating'
+Acts as an asynchronous bridge between the user service and recomm service.
+Allows the model training, inference etc to happen in the background asynchronously, without the client/user-service having to wait.
+
+### 8. Restaurant Service
+A Springboot microservice
+Can fetch restaurant(s) details and a user's ratings for restaurant's
+
+### 9. Firebase Auth
+For Authentication, I've used Firebase Auth with email and password here, instead of reinventing the wheel.
+The Firebase Auth token is used to validate requests.
+
 
 
 ## How to setup
